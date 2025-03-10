@@ -24,14 +24,17 @@
         <b><u>Valid letters</u></b>: A B C D <br />
     </p>
     <p class="table-description">
-        <button class="button" onclick="solvePuzzle()">Solve</button>
+        <button id="solve" class="button" onclick="solvePuzzle()">Solve</button>
+    </p>
+    <p class="table-description">
+        <button id="iterate" class="button">continue</button>
     </p>
     <br /><br /><br />
     <div id="table-render"></div>
     <div id="toast" class="toast"></div>
 
     <script>
-        const data = [
+        const mainGrid = [
             Array(6).fill(""),
             Array(6).fill(""),
             Array(6).fill(""),
@@ -234,18 +237,37 @@
             }, duration); // Hide after 3 seconds
         }
 
-        renderTable(data, 'table-render');
+        renderTable(mainGrid, 'table-render');
 
         setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 3000);
     </script>
     <script type="text/javascript" src="solver.js"></script>
     <script>
-        function solvePuzzle() {
-            let solutionFound = solve(firstRow, firstColumn, lastRow, lastColumn, data);
-            if (solutionFound) {
+        async function solvePuzzle() {
+            const refreshTable = () => {
                 unrenderTable('table-render');
-                renderTable(data, 'table-render');
+                renderTable(mainGrid, 'table-render');
+            };
+            const solveButton = document.getElementById('solve');
+            const iterButton = document.getElementById('iterate');
+            solveButton.style.display = 'none';
+            iterButton.style.display = 'block';
+            const onIterate = () => new Promise(resolve => {
+                iterButton.addEventListener('click', resolve);
+                refreshTable();
+            });
+            let puzzleValid = await solve(firstRow, firstColumn, lastRow, lastColumn, mainGrid, onIterate);
+            if (puzzleValid) {
+                refreshTable();
+                console.log("solution found");
+                showToast("solution found");
+            } else {
+                console.log("solution NOT found!");
+                showToast("solution NOT found!");
             }
+            
+            solveButton.style.display = 'block';
+            iterButton.style.display = 'none';
         }
     </script>
 </body>

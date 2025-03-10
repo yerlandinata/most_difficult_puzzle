@@ -45,7 +45,7 @@ body {
 }
 
 .table-cell.solution {
-    font-size: calc(min(100vw, 600px) / 40);
+    font-size: calc(min(100vw, 600px) / 20);
 }
 
 .table-cell input {
@@ -140,4 +140,8 @@ body {
 
 .button:focus {
     color: red;
+}
+
+#iterate {
+    display: none;
 }

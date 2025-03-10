@@ -40,6 +40,10 @@ class Stack {
     }
 }
 
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 class Constraints {
     /**
      * @param {string[]} colConstraintsHead 
@@ -62,22 +66,24 @@ class Constraints {
  * @param {string[]} colConstraintsTail 
  * @param {string[]} rowConstraintsTail 
  * @param {string[][]} output 
+ * @param {() => Promise} onIteration
  * @returns {boolean}
  */
-function solve(colConstraintsHead, rowConstraintsHead, colConstraintsTail, rowConstraintsTail, output) {
+async function solve(colConstraintsHead, rowConstraintsHead, colConstraintsTail, rowConstraintsTail, output, onIteration) {
     console.log("column constraints - head: " + JSON.stringify(colConstraintsHead));
     console.log("row constraints - head: " + JSON.stringify(rowConstraintsHead));
     console.log("column constraints - tail: " + JSON.stringify(colConstraintsTail));
     console.log("row constraints - tail: " + JSON.stringify(rowConstraintsTail));
     const constraints = new Constraints(colConstraintsHead, rowConstraintsHead, colConstraintsTail, rowConstraintsTail);
-    let state = [
-        Array(6).fill(""),
-        Array(6).fill(""),
-        Array(6).fill(""),
-        Array(6).fill(""),
-        Array(6).fill(""),
-        Array(6).fill(""),
-    ];
+    // let state = [
+    //     Array(6).fill(""),
+    //     Array(6).fill(""),
+    //     Array(6).fill(""),
+    //     Array(6).fill(""),
+    //     Array(6).fill(""),
+    //     Array(6).fill(""),
+    // ];
+    let state = output;
     // initial valids
     /** @type {string[][][]} */
     let valids = [];
@@ -128,76 +134,207 @@ function solve(colConstraintsHead, rowConstraintsHead, colConstraintsTail, rowCo
             }
         }
     }
-    for (let r = 0; r < 6; r++) {
-        for (let c = 0; c < 6; c++) {
-            output[r][c] = valids[r][c].join();
-        }
-    }
-    return true;
-}
+    // for (let r = 0; r < 6; r++) {
+    //     for (let c = 0; c < 6; c++) {
+    //         output[r][c] = valids[r][c].join();
+    //     }
+    // }
 
-/**
- * @param {string[][]} state
- * @param {Constraints} constraints
- */
-function isInvalidState(state, constraints) {
-    // at max one of each letter in each rows
-    for (let r = 0; r < 6; r++) {
-        let found = [];
+
+    function findMinValid() {
+        let minValid = Number.MAX_VALUE;
+        let found = null;
+        for (let r = 0; r < 6; r++) {
+            for (let c = 0; c < 6; c++) {
+                if (state[r][c] != '') {
+                    continue;
+                }
+                if (valids[r][c].length < minValid) {
+                    minValid = valids[r][c].length;
+                    found = [r, c];
+                }
+            }
+        }
+        if (minValid == 0) {
+            return null;
+        }
+        return found;
+    }
+
+    function isInvalidState() {
+        // at max one of each letter in each rows
+        for (let r = 0; r < 6; r++) {
+            let found = [];
+            for (let c = 0; c < 6; c++) {
+                if (state[r][c] != '') {
+                    if (found.includes(state[r][c])) {
+                        console.log('duplicate in row:', r, c);
+                        return true;
+                    }
+                    found.push(state[r][c]);
+                }
+            }
+        }
+    
+        // at max one of each letter in each columns
         for (let c = 0; c < 6; c++) {
-            if (state[r][c] != '') {
-                if (found.includes(state[r][c])) {
+            let found = [];
+            for (let r = 0; r < 6; r++) {
+                if (state[r][c] != '') {
+                    if (found.includes(state[r][c])) {
+                        console.log('duplicate in column:', r, c);
+                        return true;
+                    }
+                    found.push(state[r][c]);
+                }
+            }
+        }
+    
+        // rowConstraintsHead
+        for (let r = 0; r < 6; r++) {
+            for (let c = 0; c < 6; c++) {
+                if (state[r][c] != '' && state[r][c] != constraints.rowConstraintsHead[r]) {
+                    console.log('rowConstraintsHead:', r, c);
                     return true;
                 }
-                found.push(state[r][c]);
             }
         }
-    }
-
-    // at max one of each letter in each columns
-    for (let c = 0; c < 6; c++) {
-        let found = [];
-        for (let r = 0; r < 6; r++) {
-            if (state[r][c] != '') {
-                if (found.includes(state[r][c])) {
+        // rowConstraintsTail
+        for (let r = 6; r >= 0; r--) {
+            for (let c = 0; c < 6; c++) {
+                if (state[r][c] != '' && state[r][c] != constraints.rowConstraintsTail[r]) {
+                    console.log('rowConstraintsTail:', r, c);
                     return true;
                 }
-                found.push(state[r][c]);
             }
+        }
+    
+        // colConstraintsHead
+        for (let c = 0; c < 6; c++) {
+            for (let r = 0; r < 6; r++) {
+                if (state[r][c] != '' && state[r][c] != constraints.colConstraintsHead[c]) {
+                    console.log('colConstraintsHead:', r, c);
+                    return true;
+                }
+            }
+        }
+        // colConstraintsTail
+        for (let c = 6; c >= 0; c--) {
+            for (let r = 0; r < 6; r++) {
+                if (state[r][c] != '' && state[r][c] != constraints.colConstraintsTail[c]) {
+                    console.log('colConstraintsTail:', r, c);
+                    return true;
+                }
+            }
+        }
+
+        console.log("VALID!!!");
+        return false;
+    }
+
+    /**
+     * @param {number} r
+     * @param {number} c
+     * @param {string} letter
+     */
+    function setLetter(r, c, letter) {
+        state[r][c] = letter;
+        let skipRow = true;
+        let skipCol = true;
+        if (letter == 'X') {
+            for (let col = 0; col < 6; col++) {
+                if (col == c) continue;
+                if (state[r][col] == 'X') {
+                    skipRow = false;
+                    break;
+                }
+            }
+            for (let row = 0; row < 6; row++) {
+                if (row == r) continue;
+                if (state[row][c] == 'X') {
+                    skipCol = false;
+                    break;
+                }
+            }
+        } else {
+            skipRow = false;
+            skipCol = false;
+        }
+        if (!skipCol) {
+            for (let row = 0; row < 6; row++) {
+                if (row == r) continue;
+                valids[row][c] = valids[row][c].filter(l => l != letter);
+            }
+        }
+
+        if (!skipRow) {
+            for (let col = 0; col < 6; col++) {
+                if (col == c) continue;
+                valids[r][col] = valids[r][col].filter(l => l != letter);
+            }
+        }
+
+    }
+
+    /**
+     * @param {number} r
+     * @param {number} c
+     * @param {string} letter
+     */
+    function unsetLetter(r, c, letter) {
+        state[r][c] = '';
+        for (let row = 0; row < 6; row++) {
+            if (row == r) continue;
+            if (letter == 'X') {
+                if (valids[row][c].includes('X')) continue;
+            }
+            valids[row][c].push(letter);
+        }
+        for (let col = 0; col < 6; col++) {
+            if (col == c) continue;
+            if (letter == 'X') {
+                if (valids[r][col].includes('X')) continue;
+            }
+            valids[r][col].push(letter);
         }
     }
 
-    // rowConstraintsHead
-    for (let r = 0; r < 6; r++) {
-        for (let c = 0; c < 6; c++) {
-            if (state[r][c] != '' && state[r][c] != constraints.rowConstraintsHead[r]) {
+    /**
+     * @param {number} depth
+     */
+    async function backtrack(depth) {
+        console.log('depth:', depth)
+        await onIteration();
+        let next = findMinValid();
+        if (next === null) {
+            console.log("no more valid next");
+            return depth == 36;
+        }
+        let [r, c] = next;
+        for (let letter of valids[r][c]) {
+            setLetter(r, c, letter);
+            if (!(await backtrack(depth + 1))) {
+                console.log("back tracking!");
+                unsetLetter(r, c, letter);
+            } else {
+                console.log("valid!");
                 return true;
             }
         }
-    }
-    // rowConstraintsTail
-    for (let r = 6; r >= 0; r--) {
-        for (let c = 0; c < 6; c++) {
-            if (state[r][c] != '' && state[r][c] != constraints.rowConstraintsTail[r]) {
-                return true;
-            }
-        }
+        return false;
     }
 
-    // colConstraintsHead
-    for (let c = 0; c < 6; c++) {
-        for (let r = 0; r < 6; r++) {
-            if (state[r][c] != '' && state[r][c] != constraints.colConstraintsHead[c]) {
-                return true;
-            }
-        }
-    }
-    // colConstraintsTail
-    for (let c = 6; c >= 0; c--) {
-        for (let r = 0; r < 6; r++) {
-            if (state[r][c] != '' && state[r][c] != constraints.colConstraintsTail[c]) {
-                return true;
-            }
-        }
+    if (await backtrack(0)) {
+        // for (let r = 0; r < 6; r++) {
+        //     for (let c = 0; c < 6; c++) {
+        //         output[r][c] = state[r][c];
+        //     }
+        // }
+        console.log('backtrack success:')
+        return true;
+    } else {
+        console.log('backtrack failed:')
+        return false;
     }
 }
+
