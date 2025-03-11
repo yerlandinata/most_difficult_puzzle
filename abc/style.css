@@ -169,4 +169,5 @@ body {
 
 #iterate {
     display: none;
+    animation: flashBorder 0.5s infinite alternate;
 }
