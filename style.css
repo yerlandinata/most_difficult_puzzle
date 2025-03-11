@@ -37,11 +37,16 @@ body {
     /* Responsive height with max */
     border: 1px solid white;
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     font-size: calc(min(100vw, 600px) / 20);
     /* Responsive font size with max */
     color: white;
+}
+
+.table-cell.highlight {
+    border: 2px solid yellow;
 }
 
 .table-cell.solution {
@@ -60,6 +65,26 @@ body {
     box-sizing: border-box;
     animation: flashBorder 1s infinite alternate;
     /* Important for responsive sizing */
+}
+
+.tooltip {
+    display: none;
+    width: 120px;
+    background-color: gray;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px 0;
+    font-size: calc(min(100vw, 600px) / 40);
+  
+    /* Position the tooltip */
+    position: relative;
+    top: 30%;
+    z-index: 1;
+}
+
+.table-cell:hover .tooltip {
+    display: block;
 }
 
 .table-cell input.no-animation {
@@ -101,7 +126,7 @@ body {
 /* Toast styles */
 .toast {
     position: fixed;
-    top: 20%;
+    top: 40%;
     left: 50%;
     transform: translateX(-50%);
     background-color: lightgray;

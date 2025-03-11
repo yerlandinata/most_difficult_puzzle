@@ -16,7 +16,7 @@
         once in every row and column. <br />
         The letters around the grid indicate which letter is the first one in that row or column seen from that
         position. <br />
-        In this variant there are also two empty cells in every row and column. <br />
+        In this variant there are also two empty cells in every row and column (denoted by X). <br />
     </p>
     <p class="table-description">
         <b><u>On this web page</u></b>: You set the letters around the grid, then click "solve" button to auto solve.
@@ -34,14 +34,38 @@
     <div id="toast" class="toast"></div>
 
     <script>
-        const mainGrid = [
-            Array(6).fill(""),
-            Array(6).fill(""),
-            Array(6).fill(""),
-            Array(6).fill(""),
-            Array(6).fill(""),
-            Array(6).fill(""),
-        ];
+        /**
+         * @returns {string[][][]}
+         */
+         function generateEmptyMainGridOutput() {
+            return [
+                Array(6).fill(""),
+                Array(6).fill(""),
+                Array(6).fill(""),
+                Array(6).fill(""),
+                Array(6).fill(""),
+                Array(6).fill(""),
+            ];
+        }
+        let mainGridOutput = generateEmptyMainGridOutput();
+
+        /**
+         * @returns {string[][][]}
+         */
+        function generateEmptyMainCandidateOutput() {
+            const res = [];
+            for (let r = 0; r < 6; r++) {
+                res.push([]);
+                for (let c = 0; c < 6; c++) {
+                    res[r].push([]);
+                }
+            }
+            return res;
+        }
+
+        let highlightMainGrid = null;
+
+        let mainGridCandidateOutput = generateEmptyMainCandidateOutput();
 
         let firstRow = Array(6).fill("...");
         let firstColumn = Array(6).fill("...");
@@ -52,6 +76,13 @@
             const inputs = document.querySelectorAll('.table-cell input');
             inputs.forEach(input => {
                 input.classList.add('no-animation');
+            });
+        }
+
+        function startFlash() {
+            const inputs = document.querySelectorAll('.table-cell input');
+            inputs.forEach(input => {
+                input.classList.remove('no-animation');
             });
         }
 
@@ -139,11 +170,21 @@
                 headerCell.appendChild(headerInput);
                 rowElement.appendChild(headerCell);
 
-                data[rowIndex].forEach(cellData => {
+                data[rowIndex].forEach((cellData, colIndex) => {
                     const cellElement = document.createElement('div');
                     cellElement.className = 'table-cell';
                     cellElement.classList.add('solution');
+                    if (highlightMainGrid != null) {
+                        let [r, c] = highlightMainGrid;
+                        if (rowIndex == r && colIndex == c) {
+                            cellElement.classList.add('highlight');
+                        }
+                    }
                     cellElement.textContent = cellData;
+                    const cellTooltip = document.createElement('span');
+                    cellTooltip.className = 'tooltip';
+                    cellTooltip.textContent = mainGridCandidateOutput[rowIndex][colIndex].join();
+                    cellElement.appendChild(cellTooltip);
                     rowElement.appendChild(cellElement);
                 });
 
@@ -237,7 +278,7 @@
             }, duration); // Hide after 3 seconds
         }
 
-        renderTable(mainGrid, 'table-render');
+        renderTable(mainGridOutput, 'table-render');
 
         setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 3000);
     </script>
@@ -246,25 +287,40 @@
         async function solvePuzzle() {
             const refreshTable = () => {
                 unrenderTable('table-render');
-                renderTable(mainGrid, 'table-render');
+                renderTable(mainGridOutput, 'table-render');
+                stopFlash();
             };
             const solveButton = document.getElementById('solve');
             const iterButton = document.getElementById('iterate');
             solveButton.style.display = 'none';
             iterButton.style.display = 'block';
-            const onIterate = () => new Promise(resolve => {
+            let continueTipShown = false;
+            const onIterate = (r, c) => new Promise(resolve => {
                 iterButton.addEventListener('click', resolve);
+                highlightMainGrid = [r, c];
                 refreshTable();
+                if (!continueTipShown) {
+                    continueTipShown = true;
+                    showToast("Hit 'continue' repeatedly until puzzle is solved", 3000);
+                }
             });
-            let puzzleValid = await solve(firstRow, firstColumn, lastRow, lastColumn, mainGrid, onIterate);
+            mainGridCandidateOutput = generateEmptyMainCandidateOutput();
+            let puzzleValid = await solve(firstRow, firstColumn, lastRow, lastColumn, mainGridOutput, mainGridCandidateOutput, onIterate);
             if (puzzleValid) {
                 refreshTable();
                 console.log("solution found");
-                showToast("solution found");
+                showToast("solution found", 3000);
+                mainGridOutput = generateEmptyMainGridOutput();
+                mainGridCandidateOutput = generateEmptyMainCandidateOutput();
             } else {
                 console.log("solution NOT found!");
-                showToast("solution NOT found!");
+                showToast("solution NOT found!", 3000);
+                mainGridOutput = generateEmptyMainGridOutput();
+                mainGridCandidateOutput = generateEmptyMainCandidateOutput();
+                refreshTable();
             }
+
+            startFlash();
             
             solveButton.style.display = 'block';
             iterButton.style.display = 'none';

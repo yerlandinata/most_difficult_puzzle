@@ -66,10 +66,11 @@ class Constraints {
  * @param {string[]} colConstraintsTail 
  * @param {string[]} rowConstraintsTail 
  * @param {string[][]} output 
- * @param {() => Promise} onIteration
+ * @param {string[][][]} valids 
+ * @param {(r: number, c: number) => Promise} onIteration
  * @returns {boolean}
  */
-async function solve(colConstraintsHead, rowConstraintsHead, colConstraintsTail, rowConstraintsTail, output, onIteration) {
+async function solve(colConstraintsHead, rowConstraintsHead, colConstraintsTail, rowConstraintsTail, output, valids, onIteration) {
     console.log("column constraints - head: " + JSON.stringify(colConstraintsHead));
     console.log("row constraints - head: " + JSON.stringify(rowConstraintsHead));
     console.log("column constraints - tail: " + JSON.stringify(colConstraintsTail));
@@ -84,49 +85,82 @@ async function solve(colConstraintsHead, rowConstraintsHead, colConstraintsTail,
     //     Array(6).fill(""),
     // ];
     let state = output;
-    // initial valids
-    /** @type {string[][][]} */
-    let valids = [];
-    for (let r = 0; r < 6; r++) {
-        valids.push([]);
-        for (let c = 0; c < 6; c++) {
-            valids[r].push(["A", "B", "C", "D", "X"]);
 
-            if (constraints.colConstraintsHead[c] != "") {
-                if (r == 0) {
+    /**
+     * @param {number} r 
+     * @param {number} c 
+     */
+    function recalculateValidsHeadTail(r, c) {
+        if (constraints.colConstraintsHead[c] != "") {
+            if (r == 0) {
+                valids[r][c] = valids[r][c].filter(letter => letter == constraints.colConstraintsHead[c] || letter == "X");
+            } else if (r >= 3) {
+                valids[r][c] = valids[r][c].filter(letter => letter != constraints.colConstraintsHead[c]);
+            } else if (r == 1) {
+                if (state[0][c] == 'X') {
                     valids[r][c] = valids[r][c].filter(letter => letter == constraints.colConstraintsHead[c] || letter == "X");
-                } else if (r >= 3) {
-                    valids[r][c] = valids[r][c].filter(letter => letter != constraints.colConstraintsHead[c]);
+                }
+            } else if (r == 2) {
+                if (state[0][c] == 'X' && state[1][c] == 'X' ) {
+                    valids[r][c] = valids[r][c].filter(letter => letter == constraints.colConstraintsHead[c] || letter == "X");
                 }
             }
-            // console.log("valids 1 ", r, c, valids[r][c].length)
+        }
 
-            if (constraints.colConstraintsTail[c] != "") {
-                if (r == 5) {
+        if (constraints.colConstraintsTail[c] != "") {
+            if (r == 5) {
+                valids[r][c] = valids[r][c].filter(letter => letter == constraints.colConstraintsTail[c] || letter == "X");
+            } else if (r < 3) {
+                valids[r][c] = valids[r][c].filter(letter => letter != constraints.colConstraintsTail[c]);
+            } else if (r == 4) {
+                if (state[5][c] == 'X') {
                     valids[r][c] = valids[r][c].filter(letter => letter == constraints.colConstraintsTail[c] || letter == "X");
-                } else if (r < 3) {
-                    valids[r][c] = valids[r][c].filter(letter => letter != constraints.colConstraintsTail[c]);
+                }
+            } else if (r == 3) {
+                if (state[5][c] == 'X' && state[4][c] == 'X' ) {
+                    valids[r][c] = valids[r][c].filter(letter => letter == constraints.colConstraintsTail[c]);
                 }
             }
-            // console.log("valids 2 ", r, c, valids[r][c].length)
+        }
 
-            if (constraints.rowConstraintsHead[r] != "") {
-                if (c == 0) {
+        if (constraints.rowConstraintsHead[r] != "") {
+            if (c == 0) {
+                valids[r][c] = valids[r][c].filter(letter => letter == constraints.rowConstraintsHead[r] || letter == "X");
+            } else if (c >= 3) {
+                valids[r][c] = valids[r][c].filter(letter => letter != constraints.rowConstraintsHead[r]);
+            } else if (c == 1) {
+                if (state[r][0] == 'X') {
                     valids[r][c] = valids[r][c].filter(letter => letter == constraints.rowConstraintsHead[r] || letter == "X");
-                } else if (c >= 3) {
-                    valids[r][c] = valids[r][c].filter(letter => letter != constraints.rowConstraintsHead[r]);
+                }
+            } else if (c == 2) {
+                if (state[r][0] == 'X' && state[r][1] == 'X' ) {
+                    valids[r][c] = valids[r][c].filter(letter => letter == constraints.rowConstraintsHead[r]);
                 }
             }
-            // console.log("valids 3 ", r, c, valids[r][c].length)
+        }
 
-            if (constraints.rowConstraintsTail[r] != "") {
-                if (c == 5) {
+        if (constraints.rowConstraintsTail[r] != "") {
+            if (c == 5) {
+                valids[r][c] = valids[r][c].filter(letter => letter == constraints.rowConstraintsTail[r] || letter == "X");
+            } else if (c < 3) {
+                valids[r][c] = valids[r][c].filter(letter => letter != constraints.rowConstraintsTail[r]);
+            } else if (c == 4) {
+                if (state[r][5] == 'X') {
                     valids[r][c] = valids[r][c].filter(letter => letter == constraints.rowConstraintsTail[r] || letter == "X");
-                } else if (c < 3) {
-                    valids[r][c] = valids[r][c].filter(letter => letter != constraints.rowConstraintsTail[r]);
+                }
+            } else if (c == 3) {
+                if (state[r][5] == 'X' && state[r][4] == 'X' ) {
+                    valids[r][c] = valids[r][c].filter(letter => letter == constraints.rowConstraintsTail[r]);
                 }
             }
-            // console.log("valids 4 ", r, c, valids[r][c].length)
+        }
+    }
+
+    for (let r = 0; r < 6; r++) {
+        for (let c = 0; c < 6; c++) {
+            valids[r][c] = ['A', 'B', 'C', 'D', 'X'];
+
+            recalculateValidsHeadTail(r, c);
 
             if (valids[r][c].length <= 1) {
                 console.log("invalid constraint: ", r, c);
@@ -253,76 +287,68 @@ async function solve(colConstraintsHead, rowConstraintsHead, colConstraintsTail,
      */
     function setLetter(r, c, letter) {
         state[r][c] = letter;
-        let skipRow = true;
-        let skipCol = true;
-        if (letter == 'X') {
-            for (let col = 0; col < 6; col++) {
-                if (col == c) continue;
-                if (state[r][col] == 'X') {
-                    skipRow = false;
-                    break;
-                }
-            }
-            for (let row = 0; row < 6; row++) {
-                if (row == r) continue;
-                if (state[row][c] == 'X') {
-                    skipCol = false;
-                    break;
-                }
-            }
-        } else {
-            skipRow = false;
-            skipCol = false;
+        for (let row = 0; row < 6; row++) {
+            if (row == r) continue;
+            recalculateValids(row, c);
         }
-        if (!skipCol) {
-            for (let row = 0; row < 6; row++) {
-                if (row == r) continue;
-                valids[row][c] = valids[row][c].filter(l => l != letter);
-                if (letter == colConstraintsHead[c] && row < r) {
-                    valids[row][c] = valids[row][c].filter(l => l != 'X');
-                }
-                if (letter == colConstraintsTail[c] && row > r) {
-                    valids[row][c] = valids[row][c].filter(l => l != 'X');
-                }
-            }
+        for (let col = 0; col < 6; col++) {
+            if (col == c) continue;
+            recalculateValids(r, col);
         }
-
-        if (!skipRow) {
-            for (let col = 0; col < 6; col++) {
-                if (col == c) continue;
-                valids[r][col] = valids[r][col].filter(l => l != letter);
-                if (letter == rowConstraintsHead[r] && col < c) {
-                    valids[r][col] = valids[r][col].filter(l => l != 'X');
-                }
-                if (letter == rowConstraintsHead[r] && col > c) {
-                    valids[r][col] = valids[r][col].filter(l => l != 'X');
-                }
-            }
-        }
-
     }
 
     /**
      * @param {number} r
      * @param {number} c
-     * @param {string} letter
      */
-    function unsetLetter(r, c, letter) {
+    function unsetLetter(r, c) {
         state[r][c] = '';
         for (let row = 0; row < 6; row++) {
             if (row == r) continue;
-            if (letter == 'X') {
-                if (valids[row][c].includes('X')) continue;
-            }
-            valids[row][c].push(letter);
+            recalculateValids(row, c);
         }
         for (let col = 0; col < 6; col++) {
             if (col == c) continue;
-            if (letter == 'X') {
-                if (valids[r][col].includes('X')) continue;
-            }
-            valids[r][col].push(letter);
+            recalculateValids(r, col);
         }
+        recalculateValids(r, c);
+    }
+
+    /**
+     * Ignores X
+     * @param {number} r
+     * @param {number} c
+     */
+    function recalculateValids(r, c) {
+        valids[r][c] = ['A', 'B', 'C', 'D', 'X'];
+        let foundEmptyInRow = false;
+        for (let r2 = 0; r2 < 6; r2++) {
+            if (r2 == r) continue;
+            if (state[r2][c] == 'X') {
+                if (foundEmptyInRow) {
+                    valids[r][c] = valids[r][c].filter(l => l != 'X');
+                } else {
+                    foundEmptyInRow = true;
+                }
+            } else if (state[r2][c] != '') {
+                valids[r][c] = valids[r][c].filter(l => l != state[r2][c]);
+            }
+        }
+        
+        let foundEmptyInCol = false;
+        for (let c2 = 0; c2 < 6; c2++) {
+            if (c2 == c) continue;
+            if (state[r][c2] == 'X') {
+                if (foundEmptyInCol) {
+                    valids[r][c] = valids[r][c].filter(l => l != 'X');
+                } else {
+                    foundEmptyInCol = true;
+                }
+            } else if (state[r][c2] != '') {
+                valids[r][c] = valids[r][c].filter(l => l != state[r][c2]);
+            }
+        }
+        recalculateValidsHeadTail(r, c);
     }
 
     /**
@@ -330,7 +356,6 @@ async function solve(colConstraintsHead, rowConstraintsHead, colConstraintsTail,
      */
     async function backtrack(depth) {
         console.log('depth:', depth)
-        await onIteration();
         let next = findMinValid();
         if (next === null) {
             console.log("no more valid next");
@@ -339,10 +364,11 @@ async function solve(colConstraintsHead, rowConstraintsHead, colConstraintsTail,
         let [r, c] = next;
         for (let letter of valids[r][c]) {
             setLetter(r, c, letter);
+            await onIteration(r, c);
             if (!(await backtrack(depth + 1))) {
                 console.log("back tracking!");
-                unsetLetter(r, c, letter);
-                await onIteration();
+                unsetLetter(r, c);
+                await onIteration(r, c);
             } else {
                 console.log("valid!");
                 return true;
