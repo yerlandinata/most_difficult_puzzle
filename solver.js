@@ -165,9 +165,16 @@ async function solve(colConstraintsHead, rowConstraintsHead, colConstraintsTail,
         // at max one of each letter in each rows
         for (let r = 0; r < 6; r++) {
             let found = [];
+            let spaceCount = 0;
             for (let c = 0; c < 6; c++) {
                 if (state[r][c] != '') {
-                    if (found.includes(state[r][c])) {
+                    if (state[r][c] == 'X') {
+                        if (spaceCount == 2) {
+                            console.log('three spaces in a row:', r, c);
+                            return true;
+                        }
+                        spaceCount++;
+                    } else if (found.includes(state[r][c])) {
                         console.log('duplicate in row:', r, c);
                         return true;
                     }
@@ -179,9 +186,16 @@ async function solve(colConstraintsHead, rowConstraintsHead, colConstraintsTail,
         // at max one of each letter in each columns
         for (let c = 0; c < 6; c++) {
             let found = [];
+            let spaceCount = 0;
             for (let r = 0; r < 6; r++) {
                 if (state[r][c] != '') {
-                    if (found.includes(state[r][c])) {
+                    if (state[r][c] == 'X') {
+                        if (spaceCount == 2) {
+                            console.log('three spaces in a column:', r, c);
+                            return true;
+                        }
+                        spaceCount++;
+                    } else if (found.includes(state[r][c])) {
                         console.log('duplicate in column:', r, c);
                         return true;
                     }
@@ -193,7 +207,7 @@ async function solve(colConstraintsHead, rowConstraintsHead, colConstraintsTail,
         // rowConstraintsHead
         for (let r = 0; r < 6; r++) {
             for (let c = 0; c < 6; c++) {
-                if (state[r][c] != '' && state[r][c] != constraints.rowConstraintsHead[r]) {
+                if (state[r][c] != '' && state[r][c] != 'X' && state[r][c] != constraints.rowConstraintsHead[r]) {
                     console.log('rowConstraintsHead:', r, c);
                     return true;
                 }
@@ -202,7 +216,7 @@ async function solve(colConstraintsHead, rowConstraintsHead, colConstraintsTail,
         // rowConstraintsTail
         for (let r = 6; r >= 0; r--) {
             for (let c = 0; c < 6; c++) {
-                if (state[r][c] != '' && state[r][c] != constraints.rowConstraintsTail[r]) {
+                if (state[r][c] != '' && state[r][c] != 'X' && state[r][c] != constraints.rowConstraintsTail[r]) {
                     console.log('rowConstraintsTail:', r, c);
                     return true;
                 }
@@ -212,7 +226,7 @@ async function solve(colConstraintsHead, rowConstraintsHead, colConstraintsTail,
         // colConstraintsHead
         for (let c = 0; c < 6; c++) {
             for (let r = 0; r < 6; r++) {
-                if (state[r][c] != '' && state[r][c] != constraints.colConstraintsHead[c]) {
+                if (state[r][c] != '' && state[r][c] != 'X' && state[r][c] != constraints.colConstraintsHead[c]) {
                     console.log('colConstraintsHead:', r, c);
                     return true;
                 }
@@ -221,7 +235,7 @@ async function solve(colConstraintsHead, rowConstraintsHead, colConstraintsTail,
         // colConstraintsTail
         for (let c = 6; c >= 0; c--) {
             for (let r = 0; r < 6; r++) {
-                if (state[r][c] != '' && state[r][c] != constraints.colConstraintsTail[c]) {
+                if (state[r][c] != '' && state[r][c] != 'X' && state[r][c] != constraints.colConstraintsTail[c]) {
                     console.log('colConstraintsTail:', r, c);
                     return true;
                 }
@@ -264,6 +278,12 @@ async function solve(colConstraintsHead, rowConstraintsHead, colConstraintsTail,
             for (let row = 0; row < 6; row++) {
                 if (row == r) continue;
                 valids[row][c] = valids[row][c].filter(l => l != letter);
+                if (letter == colConstraintsHead[c] && row < r) {
+                    valids[row][c] = valids[row][c].filter(l => l != 'X');
+                }
+                if (letter == colConstraintsTail[c] && row > r) {
+                    valids[row][c] = valids[row][c].filter(l => l != 'X');
+                }
             }
         }
 
@@ -271,6 +291,12 @@ async function solve(colConstraintsHead, rowConstraintsHead, colConstraintsTail,
             for (let col = 0; col < 6; col++) {
                 if (col == c) continue;
                 valids[r][col] = valids[r][col].filter(l => l != letter);
+                if (letter == rowConstraintsHead[r] && col < c) {
+                    valids[r][col] = valids[r][col].filter(l => l != 'X');
+                }
+                if (letter == rowConstraintsHead[r] && col > c) {
+                    valids[r][col] = valids[r][col].filter(l => l != 'X');
+                }
             }
         }
 
@@ -316,6 +342,7 @@ async function solve(colConstraintsHead, rowConstraintsHead, colConstraintsTail,
             if (!(await backtrack(depth + 1))) {
                 console.log("back tracking!");
                 unsetLetter(r, c, letter);
+                await onIteration();
             } else {
                 console.log("valid!");
                 return true;
